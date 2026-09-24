@@ -14,7 +14,7 @@ This guide explains, step by step, what was built in `ewe_ngram_lm.ipynb`, why e
 
 **Conventions.** **Bold** marks a term being defined. Numbers come from a real run of the notebook (random seed 42, so they reproduce exactly). Anything I could not verify is marked *[verify]*. Please check those before putting them in a report.
 
-**Status of the numbers.** Section 8.1 describes a tuning problem found while writing this guide. It means the headline numbers in Sections 5 and 7 are correct for the notebook *as it currently is*, but should be re-computed before you publish them. Read that section before you write your report.
+**Status of the numbers.** Section 8.1 describes a tuning problem found while writing this guide. It means the headline numbers in Sections 5 and 7 are correct for the notebook *as it currently is*, but should be re-computed before you publish them. All numbers reflect the current notebook, which no longer uses the 200 extra online Bible sentences it originally loaded (Section 6, item 9). Read that section before you write your report.
 
 ---
 
@@ -28,19 +28,19 @@ This guide explains, step by step, what was built in `ewe_ngram_lm.ipynb`, why e
 
 **Why this method for Ewe.** Ewe is a **low-resource language**: there is far less digital text than for English. Modern neural language models need huge amounts of text. Counting-based models work on small data, run in seconds on a laptop, and every number in them can be inspected, which makes them good for learning and for a first baseline.
 
-**What the data looks like.** 47,965 lines of Ewe from three sources, about 1.5 million tokens after cleaning (Section 5, Part 2).
+**What the data looks like.** 47,765 lines of Ewe from two sources, about 1.5 million tokens after cleaning (Section 5, Part 2).
 
 **What we found** (details and caveats in Sections 7 and 8):
 
 | Model (how much context) | Test perplexity (lower is better) |
 |---|---|
-| Unigram (none) | 601.6 |
-| Bigram (1 previous word) | 171.1 |
-| **Trigram (2 previous words)** | **142.8** |
-| 4-gram (3 previous words) | 190.0 |
-| 5-gram (4 previous words) | 308.9 |
+| Unigram (none) | 595.9 |
+| Bigram (1 previous word) | 167.3 |
+| **Trigram (2 previous words)** | **139.2** |
+| 4-gram (3 previous words) | 184.6 |
+| 5-gram (4 previous words) | 299.6 |
 
-In plain words: giving the model one or two words of memory makes it much less "surprised" by real Ewe (601 down to 143). The notebook's tuning then made longer memory look worse, but Section 8.1 shows that is partly a flaw in how the settings were searched, not a fact about Ewe.
+In plain words: giving the model one or two words of memory makes it much less "surprised" by real Ewe (596 down to 139). The notebook's tuning then made longer memory look worse, but Section 8.1 shows that is partly a flaw in how the settings were searched, not a fact about Ewe.
 
 **Three lessons the project taught** (each explained later):
 1. A model can look excellent and be broken. A "gibberish beats real Ewe" bug was caught only because we tested a nonsense sentence by hand (Section 6).
@@ -78,11 +78,10 @@ A **low-resource language** has little written, digitised, cleaned text. For our
 | Source | Rows | Notes |
 |---|---|---|
 | `EWE_ENGLISH.csv` | 28,614 | Ewe sentences paired with English translations. *[Record where you obtained it and its licence.]* |
-| HuggingFace `ghananlpcommunity/ewe-bible-tts-200` | 200 | Ewe Bible sentences (text only). |
 | Waxal image-caption / transcription spreadsheet | 19,151 | Ewe transcriptions, described in the notebook as University of Ghana (2023). *[Verify the source and cite it properly.]* |
-| **Total** | **47,965** | |
+| **Total** | **47,765** | |
 
-Only the Ewe side is used. About a fifth of the lines (10,236 of 47,765 checked) begin with a number that looks like a Bible verse number, and many sentences mention names like Yehowa and Yesu Kristo, so **the corpus appears to contain a large share of religious text**. Results may not carry over to everyday conversation. This is a limitation to state in a report (Section 8.2).
+Only the Ewe side is used. (An earlier version of the notebook also fetched 200 Bible sentences from an online dataset; they were removed to keep the data fully local, see Section 6, item 9.) About a fifth of the lines (10,236 of 47,765 checked) begin with a number that looks like a Bible verse number, and many sentences mention names like Yehowa and Yesu Kristo, so **the corpus appears to contain a large share of religious text**. Results may not carry over to everyday conversation. This is a limitation to state in a report (Section 8.2).
 
 ---
 
@@ -91,7 +90,7 @@ Only the Ewe side is used. About a fifth of the lines (10,236 of 47,765 checked)
 Read this once now; come back whenever a term is unfamiliar.
 
 ### Text and data
-- **Corpus**: the collection of text you learn from. Ours is the 47,965 Ewe lines.
+- **Corpus**: the collection of text you learn from. Ours is the 47,765 Ewe lines.
 - **Token**: one unit of text after splitting. Here, usually a word, but punctuation marks like `,` and `.` are also tokens.
 - **Word type vs. word token**: "the cat saw the dog" has 5 *tokens* but 4 *types* (`the` appears twice). **Vocabulary** = the set of types.
 - **Tokenization / tokenizer**: the rules that split raw text into tokens. Our tokenizer is the function `preprocess_ewe`.
@@ -99,7 +98,7 @@ Read this once now; come back whenever a term is unfamiliar.
 - **Special tokens**: markers added by us. `<s>` = start of sentence, `</s>` = end of sentence, `<UNK>` = "unknown word". The start/end markers let the model learn how sentences begin and finish.
 - **Unicode**: the standard that assigns a number to every character in every writing system.
 - **Combining mark**: a character (like a tilde or accent) stored *separately* and drawn on top of the letter before it. `ɔ̃` is two characters: `ɔ` plus a combining tilde.
-- **Hapax legomenon** (plural *hapax legomena*): a word that occurs exactly once in the corpus. In our data 21,811 of 42,329 word types (51.5%) are hapaxes.
+- **Hapax legomenon** (plural *hapax legomena*): a word that occurs exactly once in the corpus. In our data 21,794 of 42,260 word types (51.6%) are hapaxes.
 - **Out-of-vocabulary (OOV) word**: a word in new text that never appeared in training.
 
 ### Counting and probability
@@ -213,7 +212,7 @@ Open `ewe_ngram_lm.ipynb` next to this section. Each entry says what the part do
 Imports standard Python tools: `re` (pattern matching for cleaning), `math`, `random`, `collections.Counter` (counting), `pandas` (tables) and `matplotlib` (charts). Nothing here is specific to language modelling. **No NLTK or other NLP library is used**: counting, smoothing and perplexity are written by hand so every step is visible.
 
 ### Part 2: Load and explore the data
-Loads the three sources (Section 2.3) into one table of 47,965 lines. Sentence length, counted in raw whitespace-separated words: mean 27.2, median 26, standard deviation 18.4, longest 416.
+Loads the two sources (Section 2.3) into one table of 47,765 lines. Sentence length, counted in raw whitespace-separated words: mean 27.2, median 26, standard deviation 18.4, longest 416.
 
 **Why explore first?** Always look at the data before modelling. The long tail (a 416-word "sentence") and the verse numbers we noticed later would both have been visible here.
 
@@ -245,7 +244,7 @@ Processed: ['<s>', 'ne', 'nyɔnu', 'aɖe', 'le', 'evi', 'dzim', 'eye', 'wo', 'le
 - *Drop digits*: numbers rarely help predict Ewe words.
 - *Add `<s>` and `</s>`*: so the model learns typical sentence starts and ends.
 
-After this step: 47,331 non-empty sentences and 1,531,742 tokens (markers and punctuation included), 42,331 distinct tokens.
+After this step: 47,131 non-empty sentences and 1,527,719 tokens (markers and punctuation included), 42,262 distinct tokens.
 
 **Known weaknesses of this tokenizer** are listed in Section 8.3. In short, it can split words that contain combining marks, and it does not treat `Ð` (capital eth) and `Ɖ` as the same letter.
 
@@ -254,9 +253,9 @@ The sentences are shuffled (seed 42, so it is repeatable) and cut 80 / 10 / 10:
 
 | Set | Sentences | Used for |
 |---|---|---|
-| Train | 37,864 | Counting n-grams |
-| Dev | 4,733 | Choosing hyperparameters |
-| Test | 4,734 | One final score |
+| Train | 37,704 | Counting n-grams |
+| Dev | 4,713 | Choosing hyperparameters |
+| Test | 4,714 | One final score |
 
 **Why three sets, not two?** Suppose you try 50 different settings and keep the one with the best score. That best score is optimistic, because you effectively picked the setting that happened to suit that particular data. If you report it as your result, you fooled yourself. So the *dev* set is the sandbox for choosing, and the *test* set stays sealed until every choice is finished. This project touches the test set once.
 
@@ -267,13 +266,13 @@ For each order n from 1 to 5, count every n-gram in the training sentences. Resu
 
 | n | Distinct n-grams in training | Per 100 token positions |
 |---|---|---|
-| 1 | 37,454 | 3 |
-| 2 | 278,227 | 23 |
-| 3 | 647,136 | 53 |
-| 4 | 888,590 | 72 |
-| 5 | 981,375 | 80 |
+| 1 | 37,424 | 3 |
+| 2 | 277,927 | 23 |
+| 3 | 646,236 | 53 |
+| 4 | 886,832 | 73 |
+| 5 | 979,032 | 80 |
 
-(Training has 1,226,363 tokens.)
+(Training has 1,222,771 tokens.)
 
 **This table is the most important picture in the project.** Distinct unigrams are few because words repeat. But nearly every 5-word sequence is one-of-a-kind: 80 different 5-grams for every 100 positions. A model estimating "what follows this exact 4-word context" usually has seen that context zero or one times. That is **sparsity**, and it is why Part 6 exists.
 
@@ -307,37 +306,37 @@ Words never seen in training are mapped to `<UNK>`. It has no training count, so
 
 | Sentence | Unigram | Bigram | Trigram | 4-gram | 5-gram |
 |---|---|---|---|---|---|
-| `Ne nyɔnu aɖe le evi dzim` (real, from the data) | -5.93 | -4.50 | -3.96 | -3.55 | -2.79 |
+| `Ne nyɔnu aɖe le evi dzim` (real, from the data) | -5.95 | -4.55 | -4.05 | -3.64 | -2.87 |
 | `le ame tɔ` (short phrase) | -4.25 | -4.99 | -5.61 | -6.21 | -6.51 |
-| `zzz bbb qqq` (nonsense) | -13.11 | -14.50 | -15.40 | -16.01 | -16.31 |
+| `zzz bbb qqq` (nonsense) | -13.11 | -14.50 | -15.40 | -16.00 | -16.30 |
 
-Two readings. (1) The real sentence scores far better than nonsense at every order: the model has learned something. (2) The real sentence improves as context grows (-5.93 to -2.79) because it comes from the training data, and the long-context models simply remember it. I checked: every 2-, 3-, 4- and 5-gram of that phrase occurs in the training counts, and its source line is in the training set. That is **memorisation**, and it is why we never judge a model on sentences it was trained on. So this table shows the model has learned *something*, but says nothing yet about new text (Part 8 does). The short phrase `le ame tɔ` gets *worse* with more context: its bigrams were all seen in training, but the trigram `le ame tɔ` was not, so longer contexts have nothing to match.
+Two readings. (1) The real sentence scores far better than nonsense at every order: the model has learned something. (2) The real sentence improves as context grows (-5.95 to -2.87) because it comes from the training data, and the long-context models simply remember it. I checked: every 2-, 3-, 4- and 5-gram of that phrase occurs in the training counts, and its source line is in the training set. That is **memorisation**, and it is why we never judge a model on sentences it was trained on. So this table shows the model has learned *something*, but says nothing yet about new text (Part 8 does). The short phrase `le ame tɔ` gets *worse* with more context: its bigrams were all seen in training, but the trigram `le ame tɔ` was not, so longer contexts have nothing to match.
 
 ### Part 7.5: Tuning hyperparameters on the dev set
 The settings `k` and `λ₂ … λ₅` are chosen by **grid search** on the dev set, one at a time, lowest order first (so each order's fallback is already tuned):
 
 | Setting | Values tried | Chosen | Dev perplexity |
 |---|---|---|---|
-| k (unigram smoothing) | 0.01, 0.05, 0.1, 0.3, 0.5, 1.0 | 1.0 | 594.0 |
-| λ₂ (bigram) | 0.5, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95 | 0.75 | 169.6 |
-| λ₃ (trigram) | same list | 0.5 | 143.1 |
-| λ₄ (4-gram) | same list | 0.5 | 191.5 |
-| λ₅ (5-gram) | same list | 0.5 | 312.3 |
+| k (unigram smoothing) | 0.01, 0.05, 0.1, 0.3, 0.5, 1.0 | 1.0 | 588.9 |
+| λ₂ (bigram) | 0.5, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95 | 0.75 | 167.6 |
+| λ₃ (trigram) | same list | 0.5 | 140.9 |
+| λ₄ (4-gram) | same list | 0.5 | 188.4 |
+| λ₅ (5-gram) | same list | 0.5 | 307.2 |
 
 **Look closely at the last three rows.** The chosen value, 0.5, is the *smallest* value on the list. When the best value sits at the edge of the search range, the true best is probably outside it. Section 8.1 shows this is exactly what happened.
 
 ### Part 8: Final evaluation on the test set
-Now, once, the test set is scored (148,375 predictions):
+Now, once, the test set is scored (147,816 predictions):
 
 | Model | Test perplexity |
 |---|---|
-| Unigram | 601.6 |
-| Bigram | 171.1 |
-| Trigram | **142.8** |
-| 4-gram | 190.0 |
-| 5-gram | 308.9 |
+| Unigram | 595.9 |
+| Bigram | 167.3 |
+| Trigram | **139.2** |
+| 4-gram | 184.6 |
+| 5-gram | 299.6 |
 
-The notebook remarks that the trigram is 4.2 times "less confused" than the unigram (601.6 / 142.8). The dev and test numbers are close (for example 143.1 vs 142.8 for the trigram), which is a good sign that the tuning did not overfit the dev set.
+The notebook remarks that the trigram is 4.3 times "less confused" than the unigram (595.9 / 139.2). The dev and test numbers are close (for example 140.9 vs 139.2 for the trigram), which is a good sign that the tuning did not overfit the dev set.
 
 ### Part 9: Generating Ewe text
 To generate: start with `<s>`; look up the candidate next words for the current context; keep the 50 most probable; pick one at random weighted by probability (so likely words are usually, not always, chosen); stop at `</s>` or a length limit.
@@ -346,35 +345,37 @@ Real output from one run (**not seeded, so yours will differ**):
 
 | Model | Example |
 |---|---|
-| Unigram | `be ame me aɖe ke si ale nye . ɖe ,` |
-| Bigram | `si le woƒe ʋu gã aɖe hã le afi si do awu` |
-| Trigram | `elabena nu kae nèsusu ?` |
-| 4-gram | `nyɔnu aɖewo le dɔ wɔm le mɔ dɔwɔƒe aɖe . wonye aɖaŋudɔwɔlawo` |
-| 5-gram | `ŋutsu aɖe le dɔ wɔm tso ale yi ke woaza mɔɖaŋu sola` |
+| Unigram | `ame ame aɖewo ƒe . nu ke be ne ke` |
+| Bigram | `ame si wodo awu ɣie enu na ɖe edzi yim le anyigba` |
+| Trigram | `ke ne wokpɔ dɔmavɔleameŋu aɖe le afi ma hã ava wɔ nane` |
+| 4-gram | `ame siawoe nye bitia , farao vinyɔnu va kɔe , eye wòna` |
+| 5-gram | `ke boŋ na wò nuwɔna kple wò moɖoɖo nana amea nanya nu` |
+
+One small quirk: the unigram sampler can emit the start marker `<s>` as if it were a word (it did in another sample from this run), because `<s>` is counted like any other token.
 
 Read these as a model would score them: unigram output is word salad (no word knows its neighbour); bigram output is locally plausible but wanders; higher orders read more fluently mostly because they replay chunks of real training sentences. **Whether a sentence is grammatical Ewe cannot be decided by this code, and cannot be decided by someone who does not read Ewe.** For a report, have a speaker rate a sample.
 
 The notebook also shows **temperature**: at 0.5 the bigram model repeats safe common phrases; at 2.0 it produces adventurous, messier text.
 
 ### Part 10: What did the model learn?
-- Most frequent tokens: `.` (78,874), `le` (70,522), `,` (66,794), `ɖe` (38,804), `la` (30,092), `eye` (29,185). The 100 most common tokens cover 60.6% of all text.
-- Words by frequency: 21,811 appear once, 11,801 appear 2 to 5 times, 6,853 appear 6 to 50 times, 1,864 appear more than 50 times. **A long tail of rare words**: this is what "low-resource" looks like in numbers.
-- Most likely words after `le`: `wo` (3.3%), `afi` (2.4%), `nu` (2.1%). After `eye`: `ame` (4.4%), `wo` and `wole` (3.0% each). After `ne`: `ame` (4.3%), `.` (2.5%), `ɖe` (2.2%).
+- Most frequent tokens: `.` (78,668), `le` (70,455), `,` (66,584), `ɖe` (38,751), `la` (29,975), `eye` (29,145). The 100 most common tokens cover 60.6% of all text.
+- Words by frequency: 21,794 appear once, 11,764 appear 2 to 5 times, 6,842 appear 6 to 50 times, 1,860 appear more than 50 times. **A long tail of rare words**: this is what "low-resource" looks like in numbers.
+- Most likely words after `le`: `wo` (3.2%), `afi` (2.4%), `nu` (2.0%). After `eye`: `ame` (4.3%), `wole` (3.0%), `wo` (2.9%). After `ne`: `ame` (4.2%), `.` (2.5%), `ɖe` (2.2%).
 
 ### Part 11: Interactive demo
 `score_and_explain` prints the log-probability of every word, so you can see *where* a sentence surprises the model. For `Ame le mia si, ame le mia, enkoe nye yesu kristo` (bigram):
 
 ```
-'<s>'  → 'ame'      -2.97      ','  → 'ame'     -3.37
-'ame'  → 'le'       -4.24      ','  → 'enkoe'  -15.44   <-- very surprising
-'le'   → 'mia'      -5.93      'enkoe' → 'nye' -6.30
-...                            'kristo' → '</s>' -4.71
-Total log-probability: -73.02      Perplexity of this sentence: 184.13
+'<s>'  → 'ame'      -2.98      ','  → 'ame'     -3.40
+'ame'  → 'le'       -4.25      ','  → 'enkoe'  -15.43   <-- very surprising
+'le'   → 'mia'      -5.94      'enkoe' → 'nye' -6.30
+...                            'kristo' → '</s>' -4.90
+Total log-probability: -73.39      Perplexity of this sentence: 189.12
 ```
 
-The single biggest cost is the rare word `enkoe` after a comma (-15.44): the model has almost never seen it. This is the kind of diagnosis a model that is a black box cannot give you.
+The single biggest cost is the rare word `enkoe` after a comma (-15.43): the model has almost never seen it. This is the kind of diagnosis a model that is a black box cannot give you.
 
-**A caution about the last demo cell.** It compares `le ame tɔ` with the reordered `tɔ le ame` and says the higher score "sounds more natural". In the current run the *reordered* version scores slightly higher (-19.77 vs -20.01). Nothing here shows the first phrase is natural Ewe (it was chosen as a "simple phrase"), and a difference this small on three words is not evidence of anything. Do not use this cell as a result in a report.
+**A caution about the last demo cell.** It compares `le ame tɔ` with the reordered `tɔ le ame` and says the higher score "sounds more natural". In the current run the *reordered* version scores slightly higher (-19.80 vs -20.02). Nothing here shows the first phrase is natural Ewe (it was chosen as a "simple phrase"), and a difference this small on three words is not evidence of anything. Do not use this cell as a result in a report.
 
 ### Part 12: Summary
 Recaps what was built and learned.
@@ -417,6 +418,9 @@ Editing a notebook file while it is open in an editor does not update the editor
 
 **8. The tuning grid was too narrow.** Found while writing this guide (Section 8.1).
 
+**9. Removing 200 sentences: separating a real change from a lucky split.** The notebook originally added 200 Bible sentences from an online dataset. Removing them (to make the data fully local) lowered test perplexity by 2 to 3%, for example trigram 142.8 to 139.2. But removing rows also changes how the data is shuffled, so the whole train/dev/test split changes with it. Re-running both versions over five random seeds gave a trigram test perplexity of 139.0 (standard deviation 1.6) without the sentences and 140.9 (standard deviation 2.0) with them: a difference of about 1.4%, roughly one standard deviation. The honest conclusion is a small effect that cannot be clearly separated from split-to-split noise.
+*Habit:* a single before/after run confounds your change with the random split. Measure the spread across seeds before crediting a change.
+
 ---
 
 ## 7. Results and how to interpret them honestly
@@ -424,7 +428,7 @@ Editing a notebook file while it is open in an editor does not update the editor
 The table in Section 5, Part 8 is the result. What you can and cannot say:
 
 **You can say:**
-- Adding one or two words of context reduces perplexity sharply relative to a unigram model (601.6 to 171.1 to 142.8 on held-out text).
+- Adding one or two words of context reduces perplexity sharply relative to a unigram model (595.9 to 167.3 to 139.2 on held-out text).
 - The models score real Ewe better than nonsense at every order (Part 7 sanity check).
 - The dev and test scores agree closely, so tuning did not overfit the dev set.
 - With this data size, most long n-grams occur once (Part 5), so high orders lean heavily on their lower-order fallbacks.
@@ -432,7 +436,7 @@ The table in Section 5, Part 8 is the result. What you can and cannot say:
 **You should not say (without more work):**
 - "The trigram is the best order." See 8.1: it depends on how the higher orders are tuned.
 - "The model generates fluent Ewe." Nobody has evaluated fluency.
-- "Perplexity 142.8 is good." There is no reference point. It is only meaningful next to other models scored *the same way* on the *same data* (for example your own unigram baseline at 601.6). Do not compare it with numbers from papers that use other data, other tokenization or other vocabularies.
+- "Perplexity 139.2 is good." There is no reference point. It is only meaningful next to other models scored *the same way* on the *same data* (for example your own unigram baseline at 595.9). Do not compare it with numbers from papers that use other data, other tokenization or other vocabularies.
 - "The model understands Ewe." It counts word sequences. It has no notion of meaning or grammar.
 
 ---
@@ -442,13 +446,13 @@ The table in Section 5, Part 8 is the result. What you can and cannot say:
 A good report has this section. Reviewers trust work that states its own weaknesses. Below are the real ones, ranked by importance.
 
 ### 8.1 The tuning grid was too narrow (the most important one)
-The λ values were searched over 0.5 to 0.95. For the trigram, 4-gram and 5-gram the winner was 0.5, the bottom of that range. I re-ran the staged tuning on the dev set only (test set untouched) with a wider grid of 0.01 to 0.95, using `wide_grid_check.py` in this repository, which reproduces the notebook's own numbers exactly where the grids overlap (k = 1.0, unigram dev perplexity 594.0):
+The λ values were searched over 0.5 to 0.95. For the trigram, 4-gram and 5-gram the winner was 0.5, the bottom of that range. I re-ran the staged tuning on the dev set only (test set untouched) with a wider grid of 0.01 to 0.95, using `wide_grid_check.py` in this repository, which reproduces the notebook's own numbers exactly where the grids overlap (k = 1.0, unigram dev perplexity 588.9):
 
 | Order | Notebook grid: chosen λ, dev perplexity | Wide grid: chosen λ, dev perplexity |
 |---|---|---|
-| 3 | 0.5, 143.1 | 0.3, **136.5** |
-| 4 | 0.5, 191.5 | 0.05, **133.9** |
-| 5 | 0.5, 312.3 | 0.01, **133.8** |
+| 3 | 0.5, 140.9 | 0.3, **134.5** |
+| 4 | 0.5, 188.4 | 0.05, **132.0** |
+| 5 | 0.5, 307.2 | 0.01, **131.9** |
 
 Two things follow. **(a)** The notebook's headline that the 4-gram and 5-gram are much worse than the trigram (190 and 309 vs 143) is largely an artifact of the search range. With a fitting λ the 4-gram is slightly *better* than the trigram on dev data, and the 5-gram is no better than the 4-gram. **(b)** The 5-gram again chose the lowest value on the widened grid (0.01), so its value is still not pinned down, and the 4-gram's 0.05 is close to the bottom too.
 
@@ -459,7 +463,7 @@ The general lesson, worth stating in a report: *if a hyperparameter search retur
 ### 8.2 Data limitations
 - **Small and skewed corpus**: 1.2 million training tokens; a large share appears to be religious text (verse numbers on about 21% of lines). Conclusions may not transfer to conversational or news Ewe.
 - **Data quality**: 39 lines are corrupted junk (control characters and escape sequences such as `\E7t\EEWr{`), some duplicated. They are a tiny fraction (0.08%) but add noise to the vocabulary and can be memorised by high-order models.
-- **Mixed provenance and licences**: three sources of different origin. State where each came from and confirm you may use it *[verify]*.
+- **Mixed provenance and licences**: two sources of different origin. State where each came from and confirm you may use it *[verify]*.
 - **Possible overlap**: duplicated or near-duplicate sentences across train and test would make scores look better than they are. This was not checked.
 
 ### 8.3 Tokenization limitations
@@ -473,7 +477,7 @@ The tokenizer is a hand-written function with known faults, found after the note
 Later experiments (not included in this repository) measured several of these effects by comparing other tokenizers.
 
 ### 8.4 Evaluation limitations
-- **One split, one seed**: no confidence intervals. Differences of a few percent between models could be noise. To estimate noise, repeat with several seeds or bootstrap the test sentences.
+- **One split for the reported numbers.** Re-splitting the data with five different seeds (and tuning each time) gave a trigram test perplexity with a standard deviation of about 1.6, roughly 1.2%, so differences of a few percent between models can be noise. Report several seeds, or bootstrap the test sentences, before claiming a small difference.
 - **Perplexity is not comparable across tokenizations.** A tokenizer that produces more, easier tokens gets a lower *per-token* score without modelling better. Only compare perplexities computed with the same tokenizer, or normalise by something fixed (for example bits per character of the original text).
 - **Intrinsic only**: no task-based evaluation (for example spelling correction or next-word suggestion accuracy).
 - **Generation is unseeded and unrated**: the samples change on every run and no speaker judged them.
@@ -509,7 +513,7 @@ A typical layout for an 8 to 10 page report. Word budgets are rough.
 
 Replace the bracketed numbers with your final re-tuned results.
 
-> Ewe is a low-resource West African language with little digitised text. We build word-level n-gram language models (orders 1 to 5) from scratch on a corpus of about [47,000] Ewe sentences drawn from three sources. Sparsity is handled with add-k smoothing at the unigram level and recursive linear interpolation for higher orders, with hyperparameters chosen by grid search on a held-out development set. On a held-out test set, perplexity falls from [601.6] for a unigram model to [142.8] for a trigram model. We find that [higher orders give little additional benefit given the corpus size], and we show that the apparent penalty of higher orders depends strongly on the tuning range. We discuss limitations including a small and partly religious corpus, tokenization issues with Ewe combining marks, and the absence of native-speaker evaluation.
+> Ewe is a low-resource West African language with little digitised text. We build word-level n-gram language models (orders 1 to 5) from scratch on a corpus of about [47,000] Ewe sentences drawn from two sources. Sparsity is handled with add-k smoothing at the unigram level and recursive linear interpolation for higher orders, with hyperparameters chosen by grid search on a held-out development set. On a held-out test set, perplexity falls from [595.9] for a unigram model to [139.2] for a trigram model. We find that [higher orders give little additional benefit given the corpus size], and we show that the apparent penalty of higher orders depends strongly on the tuning range. We discuss limitations including a small and partly religious corpus, tokenization issues with Ewe combining marks, and the absence of native-speaker evaluation.
 
 ### 9.3 Formulas to include
 
@@ -527,14 +531,14 @@ Reviewers value this. Put it in an appendix.
 
 - [ ] Python version and package versions (this project used pandas 3.0.5, matplotlib 3.11.2, numpy 2.5.3, openpyxl 3.1.5, Python 3.14; check `pip list`)
 - [ ] Data sources, download dates, licences
-- [ ] Number of raw lines, lines kept, final split sizes (47,965 / 47,331 / 37,864 / 4,733 / 4,734)
+- [ ] Number of raw lines, lines kept, final split sizes (47,765 / 47,131 / 37,704 / 4,713 / 4,714)
 - [ ] Random seed (42) and how the shuffle was done
 - [ ] Every hyperparameter grid *and* the chosen values
 - [ ] The exact tokenization rules (paste `preprocess_ewe`)
 - [ ] Definition of perplexity, including which tokens are predicted
 - [ ] Statement that the test set was scored once, after all choices
 - [ ] "Restart and Run All" was performed and results match
-- [ ] The notebook needs internet access for the HuggingFace sentences; state this or save a local copy
+- [ ] Data provenance and licences for both files in `data/` (the notebook is fully offline; nothing is downloaded)
 
 ### 9.5 Mistakes reviewers commonly flag
 
@@ -550,14 +554,14 @@ Reviewers value this. Put it in an appendix.
 
 | Fact | Value | Source in the notebook |
 |---|---|---|
-| Raw lines / kept | 47,965 / 47,331 | Parts 2, 3 |
-| Tokens / word types | 1,531,742 / 42,331 | Part 3 |
-| Word types occurring once | 21,811 of 42,329 (51.5%) | Part 10 |
-| Split | 37,864 / 4,733 / 4,734 | Part 4 |
-| Distinct n-grams, n=1..5 | 37,454 / 278,227 / 647,136 / 888,590 / 981,375 | Part 5 |
+| Raw lines / kept | 47,765 / 47,131 | Parts 2, 3 |
+| Tokens / word types | 1,527,719 / 42,262 | Part 3 |
+| Word types occurring once | 21,794 of 42,260 (51.6%) | Part 10 |
+| Split | 37,704 / 4,713 / 4,714 | Part 4 |
+| Distinct n-grams, n=1..5 | 37,424 / 277,927 / 646,236 / 886,832 / 979,032 | Part 5 |
 | Chosen k, λ₂..λ₅ | 1.0, 0.75, 0.5, 0.5, 0.5 | Part 7.5 |
-| Test perplexity, n=1..5 | 601.6 / 171.1 / 142.8 / 190.0 / 308.9 | Part 8 |
-| Test predictions | 148,375 | Part 8 |
+| Test perplexity, n=1..5 | 595.9 / 167.3 / 139.2 / 184.6 / 299.6 | Part 8 |
+| Test predictions | 147,816 | Part 8 |
 | Mean words per line | 27.2 | Part 2 |
 
 **Before quoting the last two rows of results, re-tune with the wider grid (Section 8.1).**
@@ -573,7 +577,7 @@ Try answering before reading the hint.
 3. **Why do we keep a test set we never look at until the end?** *(Every choice made by looking at a score fits the model to that data. An untouched set gives an unbiased final estimate. Part 4.)*
 4. **A colleague reports perplexity 90 on their English model and says yours (143) is worse. What is wrong with that comparison?** *(Different language, data, vocabulary and tokenization; perplexity is only comparable when those are the same. Section 7.)*
 5. **The best interpolation weight came back as the smallest value in the grid. What should you do?** *(Widen the grid and re-run; the true best is probably outside it. Section 8.1.)*
-6. **Why does a 5-gram model do so well on a sentence from the training data (-2.79 per word) but badly on unusual phrases?** *(Memorisation: long contexts match training text exactly but have nothing to match in new text. Part 7.)*
+6. **Why does a 5-gram model do so well on a sentence from the training data (-2.87 per word) but badly on unusual phrases?** *(Memorisation: long contexts match training text exactly but have nothing to match in new text. Part 7.)*
 7. **A model scores nonsense better than real text. What do you check first?** *(How unseen words are handled; see the `<UNK>` trap, Section 6 item 2.)*
 8. **Why add log-probabilities instead of multiplying probabilities?** *(Products of many small numbers underflow; logs turn them into stable sums. Section 4.6.)*
 
@@ -605,7 +609,7 @@ Details below were checked against the publisher or a library record unless mark
 
 1. Use the project virtual environment (`venv/`). The notebook needs `pandas`, `matplotlib`, `openpyxl` (it installs `openpyxl` itself if missing).
 2. Keep the `data/` folder (`EWE_ENGLISH.csv` and `waxal_transcriptions.xlsx`) next to the notebook.
-3. Internet is needed once for the 200 HuggingFace sentences. If the download fails the notebook continues without them and your numbers will differ slightly.
+3. No internet is needed: all data is in `data/`.
 4. Choose **Restart kernel and Run All**. It takes about half a minute.
 5. Do not edit the notebook file from outside your editor while it is open.
 

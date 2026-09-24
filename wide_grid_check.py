@@ -5,13 +5,11 @@ Why: in ewe_ngram_lm.ipynb the chosen interpolation weights for the trigram, 4-g
 narrow. This script repeats the tuning with both grids and prints dev perplexity side by side.
 It reuses the notebook's tokenizer, split (seed 42) and model, and never scores the test set.
 
-Usage:  python wide_grid_check.py        (about a minute; needs internet for the 200 HuggingFace sentences)
+Usage:  python wide_grid_check.py        (about a minute)
 """
-import json
 import math
 import random
 import re
-import urllib.request
 from collections import Counter
 
 import pandas as pd
@@ -24,15 +22,6 @@ K_GRID = [0.01, 0.05, 0.1, 0.3, 0.5, 1.0]
 
 def load_raw():
     texts = list(pd.read_csv('data/EWE_ENGLISH.csv', index_col=0).dropna(subset=['EWE'])['EWE'].astype(str))
-    try:
-        base = ("https://datasets-server.huggingface.co/rows?dataset=ghananlpcommunity%2Fewe-bible-tts-200"
-                "&config=default&split=train&length=100&offset=")
-        for off in (0, 100):
-            req = urllib.request.Request(base + str(off), headers={'User-Agent': 'python-urllib/3'})
-            with urllib.request.urlopen(req) as r:
-                texts += [row['row']['text'] for row in json.load(r)['rows']]
-    except Exception as e:
-        print(f"WARNING: HuggingFace fetch failed ({e}); numbers will not match the notebook.")
     x = pd.read_excel('data/waxal_transcriptions.xlsx', usecols=['Transcription'])['Transcription']
     x = x.dropna().str.strip().str.strip('\xa0')
     return texts + list(x[x.str.len() > 0])

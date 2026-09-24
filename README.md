@@ -12,19 +12,19 @@ Test-set perplexity from `ewe_ngram_lm.ipynb` as it stands (lower is better; the
 
 | Model | Context | Test perplexity |
 |---|---|---|
-| Unigram | none | 601.6 |
-| Bigram | 1 word | 171.1 |
-| Trigram | 2 words | **142.8** |
-| 4-gram | 3 words | 190.0 |
-| 5-gram | 4 words | 308.9 |
+| Unigram | none | 595.9 |
+| Bigram | 1 word | 167.3 |
+| Trigram | 2 words | **139.2** |
+| 4-gram | 3 words | 184.6 |
+| 5-gram | 4 words | 299.6 |
 
 Effect of the tuning grid, **dev set only** (from `wide_grid_check.py`):
 
 | Order | Notebook grid (0.5 to 0.95) | Wider grid (0.01 to 0.95) |
 |---|---|---|
-| Trigram | 143.1 | 136.5 |
-| 4-gram | 191.5 | 133.9 |
-| 5-gram | 312.3 | 133.8 |
+| Trigram | 140.9 | 134.5 |
+| 4-gram | 188.4 | 132.0 |
+| 5-gram | 307.2 | 131.9 |
 
 With a fitting grid, longer context helps slightly and then plateaus. Re-tune before reporting final numbers.
 
@@ -47,7 +47,7 @@ python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Open `ewe_ngram_lm.ipynb` in VS Code or Jupyter (install `jupyterlab` if you use it), choose **Restart kernel and Run All**. It takes about half a minute. An internet connection is needed once, to fetch 200 extra sentences from HuggingFace; if that fails the notebook continues without them and your numbers will differ slightly.
+Open `ewe_ngram_lm.ipynb` in VS Code or Jupyter (install `jupyterlab` if you use it), choose **Restart kernel and Run All**. It takes about half a minute. No internet connection is needed: all data is in `data/`.
 
 ```bash
 python wide_grid_check.py    # optional: the tuning-grid check
@@ -58,7 +58,7 @@ Tested with Python 3.14, pandas 3.0.5, matplotlib 3.11.2, openpyxl 3.1.5.
 ## The approach in short
 
 1. **Clean** the text: lowercase, keep Ewe letters (`ɔ ɛ ŋ ɖ ƒ`), keep `. , ! ?` as tokens, drop digits and other symbols, add `<s>` and `</s>` sentence markers.
-2. **Split** the shuffled sentences 80 / 10 / 10 into train / dev / test (seed 42): 37,864 / 4,733 / 4,734.
+2. **Split** the shuffled sentences 80 / 10 / 10 into train / dev / test (seed 42): 37,704 / 4,713 / 4,714.
 3. **Count** all 1- to 5-grams in the training set.
 4. **Smooth** with add-k at the unigram level and recursive linear interpolation for higher orders, so a context never seen in training falls back gracefully to a shorter one.
 5. **Tune** `k` and one interpolation weight per order on the dev set with a staged grid search.
@@ -69,7 +69,6 @@ Tested with Python 3.14, pandas 3.0.5, matplotlib 3.11.2, openpyxl 3.1.5.
 | Source | Rows |
 |---|---|
 | `data/EWE_ENGLISH.csv` | 28,614 |
-| HuggingFace `ghananlpcommunity/ewe-bible-tts-200` (fetched when the notebook runs) | 200 |
 | `data/waxal_transcriptions.xlsx` (described in the notebook as University of Ghana, 2023) | 19,151 |
 
 **Provenance and licence are not yet documented.** I have not verified the origin, licence or redistribution terms of the two data files in this repository, which is why the repository is private. Confirm them before making it public or citing the data. The corpus also appears to contain a large share of religious text (about a fifth of lines start with what looks like a Bible verse number), so results may not generalise to everyday Ewe.
@@ -81,11 +80,13 @@ Details and evidence are in Section 8 of the guide.
 - **Tuning grid too narrow** (above).
 - **Tokenizer weaknesses:** Python's `re` does not treat combining marks as word characters, so words with nasal vowels like `ɔ̃` can be split (about 1% of words); capital `Ɖ` is often typed as `Ð`, which lowercases to a different character than `ɖ`; digits are deleted.
 - **Data quality:** 39 lines of corrupted junk text (0.08% of the data).
-- **Evaluation:** one split and one seed, no confidence intervals; perplexity only; text generation is unseeded and has not been rated by a native speaker.
+- **Evaluation:** one split for the reported numbers (re-splitting with five seeds moved the trigram test perplexity by about 1.2%, one standard deviation, so differences of a few percent can be noise); perplexity only; text generation is unseeded and has not been rated by a native speaker.
+- **Unigram sampler quirk:** it can emit the start marker `<s>` as if it were a word, because `<s>` is counted like any other token.
 - **Small demo cell:** the last cell of Part 11 (comparing two word orders) does not support its own caption; do not treat it as a result.
 
 ## Status and next steps
 
+- [x] Remove the 200 online Bible sentences so the data is fully local (test perplexity 2 to 3% lower; mostly within split noise, see guide Section 6, item 9)
 - [ ] Widen the lambda grid, re-run, and update the results
 - [ ] Fix the tokenizer (combining marks, `Ð`) and decide about the junk lines
 - [ ] Seed the text generation
